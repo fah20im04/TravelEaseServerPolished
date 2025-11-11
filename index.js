@@ -45,17 +45,17 @@ async function run() {
         app.post('/users', async (req, res) => {
             const newUser = req.body;
             const email = newUser.email;
-            const query = {email: email};
+            const query = { email: email };
 
-            const existingUser  = await usersCollection.findOne(query);
+            const existingUser = await usersCollection.findOne(query);
 
-            if(existingUser){
-                res.send({message: 'user already exist in the db'});
+            if (existingUser) {
+                res.send({ message: 'user already exist in the db' });
 
-            }else{
+            } else {
                 const result = await usersCollection.insertOne(newUser);
                 res.send(result);
-                
+
             }
         })
 
@@ -78,7 +78,7 @@ async function run() {
             }
         });
 
-        //GET route → get latest 6 vehicles sorted by created_at
+        // gettin sort and 6 vehicle data
         app.get('/vehicles', async (req, res) => {
             try {
                 const vehicles = await vehiclesCollection
@@ -92,6 +92,35 @@ async function run() {
                 res.status(500).send({ error: 'Failed to fetch vehicles' });
             }
         });
+
+        // allVehicles api
+        app.get('/allVehicles', async (req, res) => {
+            try {
+                const allVehicles = await vehiclesCollection.find().sort({ created_at: -1 }).toArray();
+
+                res.send(allVehicles);
+
+            } catch (err) {
+                console.error('Error fetching allVehicle', err);
+                res.status(500).send({ err: 'failed to fetch allVehicles data' })
+            }
+        })
+
+        // single vehicles api
+        app.get('/allVehicles/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+                const vehicle = await vehiclesCollection.findOne({ _id: new ObjectId(id) });
+                if (!vehicle) {
+                    return res.status(404).send({ message: 'Vehicle not found' });
+                }
+                res.send(vehicle);
+            } catch (err) {
+                console.error('Error fetching vehicle:', err);
+                res.status(500).send({ error: 'Failed to fetch vehicle' });
+            }
+        });
+
 
     } catch (err) {
         console.error(' MongoDB connection failed:', err);
