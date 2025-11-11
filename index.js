@@ -34,11 +34,13 @@ async function run() {
         await client.connect();
         console.log(' Connected to MongoDB securely');
 
-        // Select database and collection
+        //database and collection
         const db = client.db(dbName);
         const vehiclesCollection = db.collection('vehicles');
 
         const usersCollection = db.collection('users');
+
+        const bookingCollection = db.collection('bookings');
 
         // users API
 
@@ -61,22 +63,30 @@ async function run() {
 
 
         //  POST route to add vehicle data with created_at field
-        app.post('/vehicles', async (req, res) => {
+        app.get('/allVehicles/:id', async (req, res) => {
             try {
-                const vehicle = {
-                    ...req.body,
-                    created_at: new Date(),
-                };
-                const result = await vehiclesCollection.insertOne(vehicle);
-                res.status(201).send({
-                    message: ' Vehicle added successfully',
-                    insertedId: result.insertedId,
-                });
-            } catch (error) {
-                console.error(' Error inserting vehicle:', error);
-                res.status(500).send({ error: 'Failed to insert vehicle data' });
+                const { id } = req.params;
+                let query;
+
+                if (ObjectId.isValid(id)) {
+                    query = { _id: new ObjectId(id) };
+                } else {
+                    query = { _id: id }; // fallback if it’s stored as string
+                }
+
+                const vehicle = await vehiclesCollection.findOne(query);
+                if (!vehicle) {
+                    return res.status(404).send({ message: 'Vehicle not found' });
+                }
+
+                res.send(vehicle);
+            } catch (err) {
+                console.error('Error fetching vehicle:', err);
+                res.status(500).send({ error: 'Failed to fetch vehicle' });
             }
         });
+
+
 
         // gettin sort and 6 vehicle data
         app.get('/vehicles', async (req, res) => {
@@ -107,19 +117,79 @@ async function run() {
         })
 
         // single vehicles api
+        const { ObjectId } = require('mongodb');
+
         app.get('/allVehicles/:id', async (req, res) => {
             try {
-                const id = req.params.id;
+                const { id } = req.params;
+
+                if (!ObjectId.isValid(id)) {
+                    return res.status(400).send({ error: 'Invalid vehicle ID' });
+                }
+
                 const vehicle = await vehiclesCollection.findOne({ _id: new ObjectId(id) });
                 if (!vehicle) {
                     return res.status(404).send({ message: 'Vehicle not found' });
                 }
+
                 res.send(vehicle);
             } catch (err) {
                 console.error('Error fetching vehicle:', err);
                 res.status(500).send({ error: 'Failed to fetch vehicle' });
             }
         });
+
+        // booking related api
+
+        app.post('/bookings', async (req, res) => {
+            try {
+                const booking = req.body;
+
+                const existing = await bookingCollection.findOne({
+                    vehicleId: booking.vehicleId,
+                    userEmail: booking.userEmail
+                });
+
+                if (existing) {
+                    return res.status(400).send({ error: 'You already booked this vehicle' })
+                }
+                const result = await bookingCollection.insertOne(booking);
+                res.send({ message: 'Booking saved successfully', bookingId: result.insertedId });
+            } catch (err) {
+                console.error('Booking failed,', err);
+                res.status(500).send({ error: 'Booking failed' });
+            }
+        });
+
+        app.get('/bookings', async (req, res) => {
+            try {
+                const bookings = await bookingCollection.find().toArray();
+                res.send(bookings);
+            } catch (err) {
+                console.error('Failed to fetch bookings:', err);
+                res.status(500).send({ error: 'Failed to fetch bookings' });
+            }
+        });
+
+
+        app.delete('/bookings/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+                const result = await bookingCollection.deleteOne({ _id: new ObjectId(id) });
+
+                if (result.deletedCount === 0) {
+                    return res.status(404).send({ error: 'Booking not found' });
+                }
+
+                res.send({ message: 'Booking canceled successfully' });
+            } catch (err) {
+                console.error('Failed to delete booking:', err);
+                res.status(500).send({ error: 'Failed to cancel booking' });
+            }
+        });
+
+
+
 
 
     } catch (err) {
