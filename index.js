@@ -116,6 +116,48 @@ async function run() {
             }
         })
 
+        // Add this in your backend (server.js or index.js)
+        app.post('/vehicles', async (req, res) => {
+            try {
+                const vehicle = {
+                    ...req.body,
+                    created_at: new Date(), // store timestamp
+                };
+
+                const result = await vehiclesCollection.insertOne(vehicle);
+
+                res.status(201).send({
+                    message: 'Vehicle added successfully',
+                    insertedId: result.insertedId,
+                });
+            } catch (err) {
+                console.error('Error inserting vehicle:', err);
+                res.status(500).send({ error: 'Failed to insert vehicle data' });
+            }
+        });
+
+        app.delete('/vehicles/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+
+                if (!ObjectId.isValid(id)) {
+                    return res.status(400).send({ error: 'Invalid vehicle ID' });
+                }
+
+                const result = await vehiclesCollection.deleteOne({ _id: new ObjectId(id) });
+
+                if (result.deletedCount === 0) {
+                    return res.status(404).send({ error: 'Vehicle not found' });
+                }
+
+                res.send({ message: 'Vehicle deleted successfully' });
+            } catch (err) {
+                console.error('Failed to delete vehicle:', err);
+                res.status(500).send({ error: 'Failed to delete vehicle' });
+            }
+        });
+
+
         // single vehicles api
         const { ObjectId } = require('mongodb');
 
