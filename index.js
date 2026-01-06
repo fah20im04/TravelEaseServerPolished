@@ -12,27 +12,12 @@ const dbName = process.env.DB_NAME;
 const JWT_SECRET = process.env.JWT_SECRET;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-const allowedOrigins = [
-  "http://localhost:5173", // local dev
-  "https://frabjous-valkyrie-48be09.netlify.app", // production frontend
-];
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // allow requests like Postman or server-to-server (no origin)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS blocked for origin: ${origin}`));
-      }
-    },
-    credentials: true, // important if using cookies or auth headers
+    origin: FRONTEND_URL,
+    credentials: true,
   })
 );
-
 app.use(express.json());
 
 // JWT verification middleware
